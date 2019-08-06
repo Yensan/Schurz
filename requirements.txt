@@ -1,0 +1,9 @@
+Flask
+Flask-Alembic
+Flask-SQLAlchemy
+Flask-Admin
+Flask-DebugToolbar
+ipython
+marshmallow
+colorlog
+gunicorn
