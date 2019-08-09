@@ -41,13 +41,20 @@ class Applicaltion(Flask):
         # register URL from base URL patterns
         register_url(self, urlpatterns)
 
-        # init Database with app settings
-        from utils.db_tool import db
-        db.init_app(self)
+        # init Flask_SQLAlchemy with app settings
+        if self.config.get('SQLALCHEMY_DATABASE_URI'):
+            from utils.db_tool import db
+            db.init_app(self)
+
+        # init Flask-MongoEngine with app settings
+        if self.config.get('MONGODB_SETTINGS'):
+            from utils.mongo import mongo
+            mongo.init_app(self)
 
         # init Flask-Admin extension
-        from utils.admin import admin
-        admin.init_app(self)
+        if self.config.get('FLASK_ADMIN_SWATCH'):
+            from utils.admin import admin
+            admin.init_app(self)
 
         # Use Flask-Session instead of Flask default session.
         if self.config.get('SESSION_TYPE'):

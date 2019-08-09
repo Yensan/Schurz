@@ -47,8 +47,17 @@ SQLALCHEMY_TRACK_MODIFICATIONS = False
 SQLALCHEMY_ENCODING = "utf8mb4"
 # 'mysql://username:password@server/db'
 from utils.db_tool import make_DATABASE_URI
-SQLALCHEMY_DATABASE_URI = make_DATABASE_URI(DATABASES['test'])
+# SQLALCHEMY_DATABASE_URI = make_DATABASE_URI(DATABASES['test'])
 
+
+MONGODB_SETTINGS = {
+    'connect': False, # `True` will connect as `init_app`; `False` will not connect until use mongo
+    'host': '127.0.0.1',
+    'port': 27017,
+    'db': 'test',
+    # 'username': 'root',
+    # 'password': 'root'
+}
 
 # STATIC_URL = '/static/'
 STATIC_URL = '/static'
@@ -59,6 +68,11 @@ MEDIA_DIR = os.path.join(BASE_DIR, 'static', 'media')
 # Flask-Admin
 FLASK_ADMIN_SWATCH = 'cerulean'
 
+# Compress
+COMPRESS_MIMETYPES = ['text/html', 'text/css', 'text/xml',
+                      'application/json', 'application/javascript']
+COMPRESS_LEVEL = 6
+COMPRESS_MIN_SIZE = 512
 
 # Internationalization
 LANGUAGE_CODE = 'zh-hans'

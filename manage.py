@@ -6,11 +6,13 @@ import os
 import importlib
 
 import click
-from flask_alembic import Alembic
-from flask_alembic.cli import base as flask_alembic
+
+
 
 from utils.file_manage import recurs_find
 from utils.crypto import get_random_string
+
+
 
 @click.group()
 def cli(): pass
@@ -79,6 +81,19 @@ def ipython_shell():
 
 
 # ------- alembic ----------
+# if use NOSQL, no need for using: flask_sqlalchemy flask_alembic
+try:    from flask_alembic.cli import base as flask_alembic
+except: pass
+# if not have RDBMS info, it is useless running all of alembic command
+def has_RDBMS_info(fun):
+    def wrapper(*args, **kwargs):
+        if app.config.get('SQLALCHEMY_DATABASE_URI'):
+            return fun(*args, **kwargs)
+        else:
+            print('Must set database info first --- `SQLALCHEMY_DATABASE_URI`')
+            return lambda arg: None
+    return wrapper
+
 '''
 There is a easier way using Alembic with click, but can't use it as same as Django
 ```python
@@ -90,30 +105,35 @@ cli.add_command(alembic_click, 'db')
 
 @cli.command('makemigrations')
 @click.argument('message', default='Model changed')
+@has_RDBMS_info
 def makemigrations(message):
     flask_alembic.revision(message)
 
 
 @cli.command('migrate')
 @click.argument('target', default='heads')
+@has_RDBMS_info
 def migrate(target):
     flask_alembic.upgrade(target)
 
 
 @cli.command('merge')
 @click.argument('revisions', default='heads')
+@has_RDBMS_info
 def merge(revisions):
     flask_alembic.merge(revisions, message=None, label=None)
 
 
 @cli.command('downgrade')
 @click.argument('target', default=-1)
+@has_RDBMS_info
 def downgrade(target):
     flask_alembic.downgrade(target)
 
 
 @cli.command('current')
 @click.argument('verbose', default=True)
+@has_RDBMS_info
 def current(verbose):
     flask_alembic.current(verbose=verbose)
 
@@ -150,7 +170,7 @@ def stamp(target):
 
 
 if __name__ == '__main__':
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    base_dir = os.path.dirname(os.path.abspath(__file__))
     wsgi = [i for i in recurs_find(base_dir, 'wsgi.py') if 'lib' not in i][0]
     pkg = os.path.split(os.path.dirname(wsgi))[1]
     # import importlib
@@ -158,6 +178,8 @@ if __name__ == '__main__':
     # params_ = importlib.import_module('.c.c',package='b')
     app = getattr(importlib.import_module('{}.wsgi'.format(pkg)), 'app')
     with app.app_context():  # make app_context
-        Alembic().init_app(app)   # init Alembic with app context
+        if app.config.get('SQLALCHEMY_DATABASE_URI'):
+            from flask_alembic import Alembic
+            Alembic().init_app(app)   # init Alembic with app context
         cli()  # Start command line Service
 
