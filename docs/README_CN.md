@@ -1,6 +1,28 @@
 
-
 ## Flask 知识
+
+Web Framework基本上都差不多，主要就是 URL路由分发、业务逻辑处理、数据存取、模板渲染。无论什么语言，大部分Web框架的核心部分，都如以下：
+
+```mermaid
+graph LR
+a(Client) --- b(Nginx); b --- c(URL Router); c --- d(Controller); 
+d --- e(ORM & DAO);
+d --- f(Template & Restful module)
+
+```
+
+每个 Django 的功能，Flask 都有对应的替代品。
+
+| 功能                           | Django模块                                                   | Flask实现                                   |      |
+| ------------------------------ | ------------------------------------------------------------ | ------------------------------------------- | ---- |
+| 项目管理模块                   | mange.py                                                     | Click实现命令行，Flask-Alembic实现RDBMS迁移 | ✅    |
+| DebugToolBar，只在HTML页面有效 | Django-DebugToolBar                                          | Flask-DebugToolBar（它会自动安装Blinker）   | ✅    |
+| 后台管理                       | `from django.contrib import admin`                           | Flask-Admin                                 | ✅    |
+| HTML表单及验证                 | `from django import forms`                                   | Flask-WTF                                   |      |
+| 用户登录登出                   | 用authenticate、login、logout等函数。`user = authenticate(username=user_name, password=pwd); if user:login(request, user)` | Flask-Login                                 |      |
+| 用户角色和权限                 |                                                              | Flask-Login、Flask-Security                 |      |
+| 信号处理                       | Django信号量`from django.db.models.signals import post_save` | Blinker、Flask-Login                        |      |
+| 切面编程                       | Django中间件`from django.utils.deprecation import MiddlewareMixin` | Flask 钩子函数、Werkzeug Middleware         | ✅    |
 
 
 
@@ -59,7 +81,6 @@ Flask 的 request 对象，是一个框架内部的全局变量，是一个上�
 
 ```python
 from flask import current_app, g, request, session
-
 ```
 
 这 4 个上下文变量的实现，原理大致相同。实现非常复杂。
@@ -209,6 +230,7 @@ Session().init_app(app)
 #### Token
 
 Token 和 微服务 之类的，留待以后研究。
+
 
 
 
@@ -373,13 +395,92 @@ In [12]: db.session.commit()
 
 
 
+### Flask-Admin后台
+
+https://flask-admin.readthedocs.io/en/latest/
+
+https://www.cnblogs.com/magicroc/p/6103773.html?utm_source=itdadao&utm_medium=referral
+
+https://segmentfault.com/a/1190000013073352
+
+
+
+
+
+
+
+### Flask集成MongoDB
+
+MongoKit已经废弃，使用mongoengine。
+
+```shell
+$ pip install flask-mongoengine # 自动安装 Flask-WTF，mongoengine，pymongo
+```
+
+1. 创建一个项目全局变量。这个变量将会被下面的使用
+
+   ```python
+   from flask_mongoengine import MongoEngine
+   mongo = MongoEngine()
+   ```
+
+2. init_app。
+
+   ```python
+   class Applicaltion(Flask):
+       def __init__(self, import_name):
+               if self.config.get('MONGODB_SETTINGS'):
+                   from utils.mongo import mongo
+                   mongo.init_app(self)
+   ```
+
+3. 定义 Document（不需要迁移，MongoDB会自动建立collection也就是表）
+
+   ```python
+   from utils.mongo import mongo
+   class Question(mongo.Document):
+       question_text = mongo.StringField(required=True)
+       pub_date = mongo.DateTimeField(required=True, default=datetime.utcnow)
+   class Choice(mongo.Document):
+       question = mongo.ReferenceField(Question)
+       choice_text = mongo.StringField(required=True)
+       votes = mongo.IntField(default=0)
+   ```
+
+4. CRUD 在业务代码，导入定义的 Document，查询语法 Django ORM 极其相似
+
+   ```python
+   from . import documents
+   # 增 Create
+   q = documents.Question(question_text='魔镜魔镜看看我，我的锁骨在哪里')
+   q.save()
+   c1 = documents.Choice(question=q, choice_text='性感锁骨', votes=0)
+   c1.save()
+   c2 = documents.Choice(
+       question=q, choice_text='没有锁骨', votes=0
+   ).save()
+   # 查 Retrieve
+   for i in documents.Choice.objects:  # 全集查询，然后迭代
+       print(i.question.question_text)
+   c = documents.Choice.objects.first() # 只取一个
+   c1 = documents.Choice.objects(choice_text='性感锁骨').first()  # 各种过滤语法
+   for i in documents.Question.objects:
+       print(i, i.select_related())   # select_related()是反向查询
+   # 改 update。千万不能直接 update，而要先查到这个文档，然后update
+   c1.votes = c1.votes + 1
+   c1.save()
+   # 删 Delete
+   c1.delete()
+   c2.delete()
+   ```
+
 
 
 ### log 设置及应用
 
 与调试、追踪相关的工具包括 `print() logging  warnings`
 
-| 情境                           | 情境                                       | 工具                |
+| 处理方式                       | 情境                                       | 工具                |
 | ------------------------------ | ------------------------------------------ | ------------------- |
 | 打印到屏幕                     | 打草稿、unittest                           | print()             |
 | 记录正常的操作                 | 运行正常，为了追查 BUG，及其所能记录详情   | logging.debug()     |
@@ -400,6 +501,26 @@ In [12]: db.session.commit()
 | WARNING  | 出现反常情况，但软件功能依然能够正常实现 | logger.warning()  |
 | ERROR    | 部分软件失效                             | logger.error()    |
 | CRITICAL | 整个软件崩溃                             | logger.critical() |
+
+Python 的 logging模块，包含 4 个概念：
+
+- Logger：给调用者提供接口`logger.info('msg: foo')`
+- Formatter：格式化器，将每条日志，格式化成指定的样子。
+- Filter：过滤器，不是每条日志都会送到 Handler，有可能会过滤掉。
+- Handler：日志的真正处理器，比如存储在文件中，还是打印到屏幕。
+
+```mermaid
+graph LR
+user --> l(Logger); 
+subgraph 
+l --> a(Filter); a --> b(Filter); b --> c(Handler);
+end
+c --> d(file/console)
+```
+
+
+
+
 
 
 
