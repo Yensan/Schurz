@@ -53,7 +53,7 @@ There are 2 patterns in view:
 - MVT: use templates.
 - Restful api : do not use tempaltes, make restful json response.
 
-Database, I will show two different choices in below :  SQLite as a SQL, MongoDB as a NoSQL. If you want use Postgre, MySQL, Oracle, SQLserver, check SQLAlchemy documents, and you can handle it.
+Then, I will show two different database choices in below :  SQLite as a SQL, MongoDB as a NoSQL. If you want use Postgre, MySQL, Oracle, SQLserver, check SQLAlchemy documents, and you can handle it.
 
 #### SQLite + MVT
 
